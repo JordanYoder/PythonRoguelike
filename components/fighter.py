@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import color
+import dice
 from components.base_component import BaseComponent
 from render_order import RenderOrder
 
@@ -13,9 +14,14 @@ if TYPE_CHECKING:
 class Fighter(BaseComponent):
     parent: Actor
 
-    def __init__(self, hp: int, base_defense: int, base_power: int):
-        self.max_hp = hp
-        self._hp = hp
+    def __init__(self, hit_dice: int = 0, hp: int = 0, base_defense: int = 0, base_power: int = 0):
+        self.hit_dice = hit_dice
+        # If hit_dice is provided, roll 1d8 per HD as per FTD [cite: 1091]
+        if hit_dice > 0:
+            self.max_hp = dice.roll(hit_dice, 8)
+        else:
+            self.max_hp = hp
+        self._hp = self.max_hp
         self.base_defense = base_defense
         self.base_power = base_power
 

@@ -4,6 +4,7 @@ from components.equipment import Equipment
 from components.fighter import Fighter
 from components.inventory import Inventory
 from components.level import Level
+from components.abilities import Abilities
 from entity import Actor, Item
 
 
@@ -13,9 +14,11 @@ player = Actor(
     name="Player",
     ai_cls=HostileEnemy,
     equipment=Equipment(),
-    fighter=Fighter(hp=30, base_defense=1, base_power=2),
+    fighter=Fighter(hit_dice=10, base_defense=1, base_power=2),
     inventory=Inventory(capacity=26),
     level=Level(level_up_base=200),
+    abilities=Abilities(strength=18, dexterity=18, charisma=18, intelligence=18, wisdom=18, constitution=18)
+
 )
 
 orc = Actor(
@@ -24,9 +27,10 @@ orc = Actor(
     name="Orc",
     ai_cls=HostileEnemy,
     equipment=Equipment(),
-    fighter=Fighter(hp=10, base_defense=0, base_power=3),
+    fighter=Fighter(hit_dice=2, base_defense=0, base_power=3),
     inventory=Inventory(capacity=0),
     level=Level(xp_given=35),
+    abilities=Abilities(strength=10, dexterity=10, charisma=10, intelligence=10, wisdom=10, constitution=10 )
 )
 troll = Actor(
     char="T",
@@ -37,6 +41,7 @@ troll = Actor(
     fighter=Fighter(hp=16, base_defense=1, base_power=4),
     inventory=Inventory(capacity=0),
     level=Level(xp_given=100),
+    abilities=Abilities(strength=10, dexterity=10, charisma=10, intelligence=10, wisdom=10, constitution=10)
 )
 
 confusion_scroll = Item(
