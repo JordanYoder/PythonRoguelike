@@ -21,7 +21,7 @@ def main() -> None:
     screen_height = 50
 
     tileset = tcod.tileset.load_tilesheet(
-        "resources/tilesets/dejavu20x20_gs_tc.png", 32, 8, tcod.tileset.CHARMAP_TCOD
+        "resources/tilesets/dejavu16x16_gs_tc.png", 32, 8, tcod.tileset.CHARMAP_TCOD
     )
 
     handler: input_handlers.BaseEventHandler = setup_game.MainMenu()

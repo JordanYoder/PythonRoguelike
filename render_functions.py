@@ -11,17 +11,31 @@ if TYPE_CHECKING:
 
 
 def get_names_at_location(x: int, y: int, game_map: GameMap) -> str:
-    # Ensure x and y are integers before using them as numpy indices
     x, y = int(x), int(y)
 
-    if not game_map.in_bounds(x, y) or not game_map.visible[x, y]:
+    # Use 'explored' so players can see labels of things in the dark
+    if not game_map.in_bounds(x, y) or not game_map.explored[x, y]:
         return ""
 
-    names = ", ".join(
-        entity.name for entity in game_map.entities if entity.x == x and entity.y == y
-    )
+    entities_at_location = [
+        entity for entity in game_map.entities if entity.x == x and entity.y == y
+    ]
 
-    return names.capitalize()
+    lines = []
+    for entity in entities_at_location:
+        # Capitalize only the name here
+        name_str = entity.name.capitalize()
+
+        if hasattr(entity, "abilities") and entity.abilities:
+            a = entity.abilities
+            # These uppercase labels will now be preserved
+            stats = f"STR:{a.str} DEX:{a.dex} CON:{a.con} INT:{a.int} WIS:{a.wis} CHA:{a.cha} HP: {entity.fighter.hp}/{entity.fighter.max_hp}"
+            name_str = f"{name_str} {stats}"
+
+        lines.append(name_str)
+
+    # Return the joined string WITHOUT calling .capitalize() at the end
+    return ", ".join(lines)
 
 
 def render_bar(
