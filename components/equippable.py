@@ -10,18 +10,19 @@ if TYPE_CHECKING:
 
 
 class Equippable(BaseComponent):
-    parent: Item
-
     def __init__(
         self,
         equipment_type: EquipmentType,
-        power_bonus: int = 0,
+        power_bonus: int = 0, # Flat bonus (like +1 weapons)
         defense_bonus: int = 0,
+        damage_dice_num: int = 1,   # Number of dice (e.g., 2 in 2d6)
+        damage_dice_sides: int = 4, # Sides of dice (e.g., 6 in 1d6)
     ):
         self.equipment_type = equipment_type
-
         self.power_bonus = power_bonus
         self.defense_bonus = defense_bonus
+        self.damage_dice_num = damage_dice_num
+        self.damage_dice_sides = damage_dice_sides
 
 
 class Dagger(Equippable):

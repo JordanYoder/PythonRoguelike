@@ -19,23 +19,25 @@ class Equipment(BaseComponent):
     @property
     def defense_bonus(self) -> int:
         bonus = 0
-
-        if self.weapon is not None and self.weapon.equippable is not None:
-            bonus += self.weapon.equippable.defense_bonus
-
-        if self.armor is not None and self.armor.equippable is not None:
+        # Check the armor slot
+        if self.armor and self.armor.equippable:
             bonus += self.armor.equippable.defense_bonus
-
+        # Check the weapon/shield slot
+        if self.weapon and self.weapon.equippable:
+            bonus += self.weapon.equippable.defense_bonus
         return bonus
+
+    # In components/equipment.py
 
     @property
     def power_bonus(self) -> int:
         bonus = 0
-
-        if self.weapon is not None and self.weapon.equippable is not None:
+        # Check weapon slot (Primary source of power)
+        if self.weapon and self.weapon.equippable:
             bonus += self.weapon.equippable.power_bonus
 
-        if self.armor is not None and self.armor.equippable is not None:
+        # Check armor slot (Optional: some spiked armor might give power)
+        if self.armor and self.armor.equippable:
             bonus += self.armor.equippable.power_bonus
 
         return bonus

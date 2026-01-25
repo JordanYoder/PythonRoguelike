@@ -102,6 +102,7 @@ class Actor(Entity):
         fighter: Fighter,
         inventory: Inventory,
         level: Level,
+        render_order: RenderOrder = RenderOrder.ACTOR,  # Added for custom priority
     ):
         super().__init__(
             x=x,
@@ -110,7 +111,7 @@ class Actor(Entity):
             color=color,
             name=name,
             blocks_movement=True,
-            render_order=RenderOrder.ACTOR,
+            render_order=render_order, # Passed to base Entity class
         )
 
         self.ai: Optional[BaseAI] = ai_cls(self)

@@ -4,6 +4,7 @@ from typing import Optional, Tuple, TYPE_CHECKING
 
 import color
 import exceptions
+import random
 
 if TYPE_CHECKING:
     from engine import Engine
@@ -142,29 +143,45 @@ class ActionWithDirection(Action):
         raise NotImplementedError()
 
 
+# In actions.py
+
 class MeleeAction(ActionWithDirection):
     def perform(self) -> None:
         target = self.target_actor
         if not target:
             raise exceptions.Impossible("Nothing to attack.")
 
-        damage = self.entity.fighter.power - target.fighter.defense
+        # FTD ACCURACY ROLL: d20 + Strength Modifier
+        attack_roll = random.randint(1, 20)
+        total_attack = attack_roll + self.entity.abilities.str_mod
 
-        attack_desc = f"{self.entity.name.capitalize()} attacks {target.name}"
-        if self.entity is self.engine.player:
-            attack_color = color.player_atk
-        else:
-            attack_color = color.enemy_atk
+        target_ac = target.fighter.armor_class
 
-        if damage > 0:
-            self.engine.message_log.add_message(
-                f"{attack_desc} for {damage} hit points.", attack_color
-            )
-            target.fighter.hp -= damage
+        if attack_roll == 20:
+            # Natural 20 is a Critical Hit in FTD!
+            self.engine.message_log.add_message(f"CRITICAL HIT!", color.health_recovered)
+            self.resolve_attack(target, is_crit=True)
+        elif attack_roll == 1:
+            # Natural 1 is a fumble
+            self.engine.message_log.add_message(f"{self.entity.name} fumbles!", color.error)
+        elif total_attack >= target_ac:
+            # Success!
+            self.resolve_attack(target)
         else:
-            self.engine.message_log.add_message(
-                f"{attack_desc} but does no damage.", attack_color
-            )
+            # Miss
+            self.engine.message_log.add_message(f"{self.entity.name} misses {target.name}.")
+
+    def resolve_attack(self, target: Actor, is_crit: bool = False) -> None:
+        # FTD damage is usually weapon-based, but we'll use your 'power'
+        damage = self.entity.fighter.power
+        if is_crit:
+            damage *= 2  # Double damage on a 20
+
+        # Apply damage
+        target.fighter.hp -= damage
+        self.engine.message_log.add_message(
+            f"{self.entity.name} hits {target.name} for {damage} damage!"
+        )
 
 
 class MovementAction(ActionWithDirection):

@@ -32,9 +32,13 @@ class Abilities(BaseComponent):
         return -4
 
     @property
-    def str_mod(self) -> int: return self.get_modifier(self.str)
+    def str_mod(self) -> int:
+        return (self.str - 10) // 2
+
     @property
-    def dex_mod(self) -> int: return self.get_modifier(self.dex)
+    def dex_mod(self) -> int:
+        return (self.dex - 10) // 2
+
     @property
     def con_mod(self) -> int: return self.get_modifier(self.con)
     @property
