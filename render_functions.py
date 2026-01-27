@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Tuple, TYPE_CHECKING
 
 import color
+import entity_factories
 
 if TYPE_CHECKING:
     from tcod.console import Console
@@ -23,27 +24,32 @@ def get_names_at_location(x: int, y: int, game_map: GameMap) -> str:
 
     lines = []
     for entity in entities_at_location:
-        # Capitalize only the name here
+        # Start with the name
         name_str = entity.name.capitalize()
 
+        # Check if the entity has abilities (is an Actor)
         if hasattr(entity, "abilities") and entity.abilities:
             a = entity.abilities
             f = entity.fighter
+
+            # Calculate the display damage range
             low = max(1, f.min_damage)
             high = max(1, f.max_damage)
-            # These uppercase labels will now be preserved
-            stats = (f"STR:{a.str} DEX:{a.dex} CON:{a.con} INT:{a.int} WIS:{a.wis} CHA:{a.cha} "
-                     f"AC: {entity.fighter.armor_class} Dmg: {low}-{high})"
-                     )
+
+            # Build the stat string using the Abilities attributes
+            # Use uppercase labels to keep it readable
+            stats = (
+                f"(STR:{a.str} DEX:{a.dex} CON:{a.con} INT:{a.int} WIS:{a.wis} CHA:{a.cha} | "
+                f"AC:{f.armor_class} Dmg:{low}-{high})"
+            )
             name_str = f"{name_str} {stats}"
 
         lines.append(name_str)
 
-    # Return the joined string WITHOUT calling .capitalize() at the end
+    # Join multiple entities at the same tile with a comma
+    # Do NOT call .capitalize() on the final string or it will lowercase your stat labels!
     return ", ".join(lines)
 
-
-# In render_functions.py
 
 def render_bar(
     console: Console,

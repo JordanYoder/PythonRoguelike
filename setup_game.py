@@ -1,5 +1,6 @@
 """Handle the loading and initialization of game sessions."""
 from __future__ import annotations
+from tcod import libtcodpy
 
 import copy
 import lzma
@@ -19,8 +20,11 @@ import input_handlers
 background_image = tcod.image.load("menu_background.png")[:, :, :3]
 
 
-def new_game() -> Engine:
-    """Return a brand new game session as an Engine instance."""
+def engine_base_setup() -> Engine:
+    """
+    Sets up the engine and player template without generating the world yet.
+    Used by both Quick Start and Manual Character Creation.
+    """
     map_width = 125
     map_height = 125
 
@@ -29,7 +33,6 @@ def new_game() -> Engine:
     max_rooms = 30
 
     player = copy.deepcopy(entity_factories.player)
-
     engine = Engine(player=player)
 
     engine.game_world = GameWorld(
@@ -41,13 +44,15 @@ def new_game() -> Engine:
         map_height=map_height,
     )
 
-    engine.game_world.generate_floor()
-    engine.update_fov()
+    return engine
 
-    engine.message_log.add_message(
-        "Hello and welcome, adventurer, to yet another dungeon!", color.welcome_text
-    )
 
+def new_game() -> Engine:
+    """Return a brand new 'Quick Start' game session as an Engine instance."""
+    engine = engine_base_setup()
+    player = engine.player
+
+    # Standard "Quick Start" equipment setup
     dagger = copy.deepcopy(entity_factories.dagger)
     leather_armor = copy.deepcopy(entity_factories.leather_armor)
 
@@ -59,6 +64,14 @@ def new_game() -> Engine:
 
     player.inventory.items.append(leather_armor)
     player.equipment.toggle_equip(leather_armor, add_message=False)
+
+    # Generate the world immediately for Quick Start
+    engine.game_world.generate_floor()
+    engine.update_fov()
+
+    engine.message_log.add_message(
+        "Hello and welcome, adventurer, to yet another dungeon!", color.welcome_text
+    )
 
     return engine
 
@@ -85,18 +98,16 @@ class MainMenu(input_handlers.BaseEventHandler):
             fg=color.menu_title,
             alignment=tcod.CENTER,
         )
-        console.print(
-            console.width // 2,
-            console.height - 2,
-            "By (Your name here)",
-            fg=color.menu_title,
-            alignment=tcod.CENTER,
-        )
 
-        menu_width = 24
-        for i, text in enumerate(
-                ["[N] Play a new game", "[C] Continue last game", "[Q] Quit"]
-        ):
+        menu_options = [
+            "[N] Quick Start (Default Player)",
+            "[M] Manual Character Creation",
+            "[C] Continue last game",
+            "[Q] Quit"
+        ]
+
+        menu_width = 34
+        for i, text in enumerate(menu_options):
             console.print(
                 console.width // 2,
                 console.height // 2 - 2 + i,
@@ -107,19 +118,25 @@ class MainMenu(input_handlers.BaseEventHandler):
                 bg_blend=tcod.BKGND_ALPHA(64),
             )
 
-    def ev_keydown(self, event: tcod.event.KeyDown
-                   ) -> Optional[input_handlers.BaseEventHandler]:
+    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[input_handlers.BaseEventHandler]:
         if event.sym in (tcod.event.KeySym.Q, tcod.event.KeySym.ESCAPE):
             raise SystemExit()
-        elif event.sym == tcod.event.KeySym.Q:
+
+        elif event.sym == tcod.event.KeySym.C:
             try:
                 return input_handlers.MainGameEventHandler(load_game("savegame.sav"))
             except FileNotFoundError:
                 return input_handlers.PopupMessage(self, "No saved game to load.")
             except Exception as exc:
-                traceback.print_exc()  # Print to stderr.
+                traceback.print_exc()
                 return input_handlers.PopupMessage(self, f"Failed to load save:\n{exc}")
+
         elif event.sym == tcod.event.KeySym.N:
+            # Jump directly into the game with default stats
             return input_handlers.MainGameEventHandler(new_game())
+
+        elif event.sym == tcod.event.KeySym.M:
+            # Transition to the modular character creation screen
+            return input_handlers.CharacterCreationHandler(engine_base_setup())
 
         return None

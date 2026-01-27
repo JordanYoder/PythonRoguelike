@@ -10,7 +10,7 @@ from equipment_types import EquipmentType
 from render_order import RenderOrder
 from entity import Actor, Item
 
-
+# Character entities
 player = Actor(
     char=chr(188),
     color=(255, 255, 255),
@@ -47,6 +47,7 @@ troll = Actor(
     abilities=Abilities(strength=10, dexterity=10, charisma=10, intelligence=10, wisdom=10, constitution=10)
 )
 
+# Scroll entities
 confusion_scroll = Item(
     char=chr(928),
     color=(207, 63, 255),
@@ -72,12 +73,13 @@ lightning_scroll = Item(
     consumable=consumable.LightningDamageConsumable(damage=20, maximum_range=5),
 )
 
+# Weapon entities
 dagger = Item(
     char=")", color=(0, 191, 255), name="Dagger",
     equippable=Equippable(
         equipment_type=EquipmentType.WEAPON,
         damage_dice_num=1,
-        damage_dice_sides=4
+        damage_dice_sides=6
     ),
 )
 
@@ -88,10 +90,11 @@ sword = Item(
     equippable=Equippable(
         equipment_type=EquipmentType.WEAPON,
         damage_dice_num=1,
-        damage_dice_sides=6
+        damage_dice_sides=10
     ),
 )
 
+# Armor entities
 leather_armor = Item(
     char=chr(241),
     color=(139, 69, 19),

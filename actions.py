@@ -172,15 +172,20 @@ class MeleeAction(ActionWithDirection):
             self.engine.message_log.add_message(f"{self.entity.name} misses {target.name}.")
 
     def resolve_attack(self, target: Actor, is_crit: bool = False) -> None:
-        # FTD damage is usually weapon-based, but we'll use your 'power'
+        # 1. Capture the name BEFORE the target potentially dies
+        target_name = target.name
+
+        # 2. Roll for damage (calls the random property once)
         damage = self.entity.fighter.power
         if is_crit:
-            damage *= 2  # Double damage on a 20
+            damage *= 2
 
-        # Apply damage
+        # 3. Apply the damage
         target.fighter.hp -= damage
+
+        # 4. Use the captured target_name for the log
         self.engine.message_log.add_message(
-            f"{self.entity.name} hits {target.name} for {damage} damage!"
+            f"{self.entity.name.capitalize()} hits {target_name} for {damage} damage!"
         )
 
 

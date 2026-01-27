@@ -5,7 +5,7 @@ import os
 from typing import Callable, Optional, Tuple, TYPE_CHECKING, Union
 
 import tcod
-
+import dice
 import actions
 from actions import (
     Action,
@@ -159,8 +159,10 @@ class EventHandler(BaseEventHandler):
         self.engine.update_fov()
         return True
 
+    # In input_handlers.py, around line 163
     def ev_mousemotion(self, event: tcod.event.MouseMotion) -> None:
-        if self.engine.game_map.in_bounds(event.tile.x, event.tile.y):
+        # Check if the engine actually has a map before checking bounds
+        if hasattr(self.engine, "game_map") and self.engine.game_map.in_bounds(event.tile.x, event.tile.y):
             self.engine.mouse_location = event.tile.x, event.tile.y
 
     def on_render(self, console: tcod.Console) -> None:
@@ -236,10 +238,11 @@ class CharacterScreenEventHandler(AskUserEventHandler):
         )
 
         console.print(
-            x=x + 1, y=y + 4, string=f"Attack: {self.engine.player.fighter.power}"
+            x=x + 1, y=y + 4, string=f"Attack Range: {self.engine.player.fighter.min_damage}-"
+                                     f"{self.engine.player.fighter.max_damage}"
         )
         console.print(
-            x=x + 1, y=y + 5, string=f"Defense: {self.engine.player.fighter.defense}"
+            x=x + 1, y=y + 5, string=f"Armor Class: {self.engine.player.fighter.armor_class}"
         )
 
 
@@ -281,7 +284,7 @@ class LevelUpEventHandler(AskUserEventHandler):
         console.print(
             x=x + 1,
             y=6,
-            string=f"c) Agility (+1 defense, from {self.engine.player.fighter.defense})",
+            string=f"c) Agility (+1 AC, from {self.engine.player.fighter.armor_class})",
         )
 
     def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[ActionOrHandler]:
@@ -303,11 +306,10 @@ class LevelUpEventHandler(AskUserEventHandler):
 
         return super().ev_keydown(event)
 
-    def ev_mousebuttondown(
-        self, event: tcod.event.MouseButtonDown
-    ) -> Optional[ActionOrHandler]:
+    def ev_mousebuttondown(self, event: tcod.event.MouseButtonDown) -> Optional[ActionOrHandler]:
         """
-        Don't allow the player to click to exit the menu, like normal.
+        Overridden to do nothing.
+        This prevents mouse clicks from accidentally exiting to the main game.
         """
         return None
 
@@ -637,3 +639,145 @@ class HistoryViewer(EventHandler):
         else:  # Any other key moves back to the main game state.
             return MainGameEventHandler(self.engine)
         return None
+
+
+class CharacterCreationHandler(AskUserEventHandler):
+    def __init__(self, engine: Engine):
+        super().__init__(engine)
+        self.selected_race = None
+        self.stats = {}
+        self.swapping = []
+        self.stat_keys = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+
+    def generate_stats(self, race: str) -> None:
+        """Generates stats based on Five Torches Deep racial rules."""
+        self.selected_race = race
+        if race == "Human":
+            # Human: Roll 3d6 in order for all stats
+            for stat in self.stat_keys:
+                self.stats[stat] = dice.roll(3, 6)
+        else:
+            # Non-Humans: Two stats are fixed at 13, others are 2d6+3
+            fixed = {
+                "Dwarf": ["CON", "STR"],
+                "Elf": ["DEX", "INT"],
+                "Halfling": ["WIS", "CHA"]
+            }[race]
+
+            for stat in self.stat_keys:
+                if stat in fixed:
+                    self.stats[stat] = 13
+                else:
+                    self.stats[stat] = dice.roll(2, 6) + 3
+
+    def on_render(self, console: tcod.Console) -> None:
+        """Render the character creation menu. Overridden to avoid map rendering crashes."""
+        # Clear the background manually since we aren't calling the engine renderer
+        console.draw_rect(0, 0, console.width, console.height, 0, bg=color.black)
+
+        x, y = 15, 5
+        console.draw_frame(x, y, 50, 25, title="Character Creation", clear=True)
+
+        if not self.selected_race:
+            console.print(x + 2, y + 2, "Select your Race:")
+            console.print(x + 4, y + 4, "[1] Human   (3d6 in order, swap 2)")
+            console.print(x + 4, y + 5, "[2] Dwarf   (CON/STR 13, others 2d6+3)")
+            console.print(x + 4, y + 6, "[3] Elf     (DEX/INT 13, others 2d6+3)")
+            console.print(x + 4, y + 7, "[4] Halfling(WIS/CHA 13, others 2d6+3)")
+        else:
+            console.print(x + 2, y + 2, f"Race: {self.selected_race}")
+            for i, key in enumerate(self.stat_keys):
+                # Highlight stats if they are selected for swapping
+                fg = color.health_recovered if i in self.swapping else color.white
+
+                score = self.stats[key]
+                mod = self.engine.player.abilities.get_modifier(score)
+
+                # Format with leading zeros (:02d) and explicit modifier signs (:+d)
+                stat_string = f"({i + 1}) {key}: {score:02d} (Mod: {mod:+d})"
+                console.print(x + 4, y + 4 + i, stat_string, fg=fg)
+
+            if self.selected_race == "Human" and len([s for s in self.swapping if s != 99]) < 2:
+                console.print(x + 2, y + 12, "Humans: Press 1-6 to select two stats to swap.")
+            else:
+                self.render_class_restrictions(console, x + 2, y + 14)
+                console.print(x + 2, y + 20, "[Enter] Start Game | [R] Re-roll", fg=color.welcome_text)
+
+    def render_class_restrictions(self, console: tcod.Console, x: int, y: int) -> None:
+        """Displays eligible classes based on the race and final stats."""
+        s = self.stats
+        classes = []
+        if self.selected_race == "Dwarf":
+            if s["DEX"] >= 13: classes.append("Thief")
+            if s["INT"] >= 13: classes.append("Mage")
+        elif self.selected_race == "Elf":
+            if s["STR"] >= 13: classes.append("Warrior")
+            if s["WIS"] >= 13: classes.append("Zealot")
+        elif self.selected_race == "Halfling":
+            if s["STR"] >= 13: classes.append("Warrior")
+            if s["INT"] >= 13: classes.append("Mage")
+        else:
+            classes = ["Warrior", "Thief", "Mage", "Zealot"]
+
+        console.print(x, y, "Available Classes: " + ", ".join(classes), fg=color.impossible)
+
+    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[ActionOrHandler]:
+        key = event.sym
+
+        # Race selection state
+        if not self.selected_race:
+            if key == tcod.event.KeySym.N1:
+                self.generate_stats("Human")
+            elif key == tcod.event.KeySym.N2:
+                self.generate_stats("Dwarf")
+            elif key == tcod.event.KeySym.N3:
+                self.generate_stats("Elf")
+            elif key == tcod.event.KeySym.N4:
+                self.generate_stats("Halfling")
+            return None
+
+        # Human swap logic (using N1-N6 for numeric keys)
+        if self.selected_race == "Human" and tcod.event.KeySym.N1 <= key <= tcod.event.KeySym.N6:
+            idx = key - tcod.event.KeySym.N1
+            if idx not in self.swapping:
+                self.swapping.append(idx)
+            if len(self.swapping) == 2:
+                a, b = self.stat_keys[self.swapping[0]], self.stat_keys[self.swapping[1]]
+                self.stats[a], self.stats[b] = self.stats[b], self.stats[a]
+                self.swapping = [99]  # Mark swap as completed
+            return None
+
+        # Re-roll or Finalize
+        if key == tcod.event.KeySym.R:
+            self.swapping = []
+            self.generate_stats(self.selected_race)
+        elif key == tcod.event.KeySym.RETURN:
+            if self.selected_race:
+                self.finalize_character()
+                return MainGameEventHandler(self.engine)
+
+        return None
+
+    def ev_mousebuttondown(self, event: tcod.event.MouseButtonDown) -> Optional[ActionOrHandler]:
+        """Ignore mouse clicks to prevent accidental menu exit."""
+        return None
+
+    def finalize_character(self) -> None:
+        p = self.engine.player
+        # ... (stat setting code) ...
+
+        # 1. Create a copy of the Dagger from your factory
+        import entity_factories
+        import copy
+        starting_weapon = copy.deepcopy(entity_factories.dagger)
+
+        # 2. Give it to the player
+        starting_weapon.parent = p.inventory
+        p.inventory.items.append(starting_weapon)
+
+        # 3. Equip it so the 'weapon' attribute isn't None
+        p.equipment.toggle_equip(starting_weapon, add_message=False)
+
+        # Now generate the world
+        self.engine.game_world.generate_floor()
+        self.engine.update_fov()
