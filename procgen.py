@@ -26,11 +26,39 @@ max_monsters_by_floor = [
     (6, 5),
 ]
 
+# In procgen.py
+
 item_chances: Dict[int, List[Tuple[Entity, int]]] = {
-    0: [(entity_factories.health_potion, 35)],
-    2: [(entity_factories.confusion_scroll, 10)],
-    4: [(entity_factories.lightning_scroll, 25), (entity_factories.sword, 5)],
-    6: [(entity_factories.fireball_scroll, 25), (entity_factories.chain_mail, 15)],
+    0: [
+        (entity_factories.health_potion, 30),
+        (entity_factories.club, 10),
+        (entity_factories.quarterstaff, 10),
+        (entity_factories.sword, 5),
+        (entity_factories.confusion_scroll, 5),
+    ],
+    2: [
+        (entity_factories.health_potion, 30),
+        (entity_factories.sword, 10),
+        (entity_factories.hunting_bow, 5),
+        (entity_factories.confusion_scroll, 5),
+        (entity_factories.leather_armor, 5),
+        (entity_factories.shield, 5),
+    ],
+    4: [
+        (entity_factories.health_potion, 30),
+        (entity_factories.long_sword, 10),
+        (entity_factories.cross_bow, 10),
+        (entity_factories.war_axe, 5),
+        (entity_factories.lightning_scroll, 5),
+    ],
+    6: [
+        (entity_factories.health_potion, 30),
+        (entity_factories.lightning_scroll, 10),
+        (entity_factories.chain_mail, 10),
+        (entity_factories.halberd, 10),
+        (entity_factories.war_bow, 5),
+        (entity_factories.fireball_scroll, 5),
+    ],
 }
 
 enemy_chances: Dict[int, List[Tuple[Entity, int]]] = {

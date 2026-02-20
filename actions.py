@@ -151,9 +151,9 @@ class MeleeAction(ActionWithDirection):
         if not target:
             raise exceptions.Impossible("Nothing to attack.")
 
-        # FTD ACCURACY ROLL: d20 + Strength Modifier
+        # Use the dynamic modifier for the hit roll
         attack_roll = random.randint(1, 20)
-        total_attack = attack_roll + self.entity.abilities.str_mod
+        total_attack = attack_roll + self.entity.fighter.attack_modifier
 
         target_ac = target.fighter.armor_class
 

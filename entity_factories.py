@@ -74,24 +74,137 @@ lightning_scroll = Item(
 )
 
 # Weapon entities
-dagger = Item(
-    char=")", color=(0, 191, 255), name="Dagger",
-    equippable=Equippable(
-        equipment_type=EquipmentType.WEAPON,
-        damage_dice_num=1,
-        damage_dice_sides=6
-    ),
-)
-
 sword = Item(
     char=chr(584),
     color=(0, 191, 255),
     name="Sword",
-    equippable=Equippable(
-        equipment_type=EquipmentType.WEAPON,
-        damage_dice_num=1,
-        damage_dice_sides=10
-    ),
+    equippable=equippable.Sword(power_bonus=0),
+)
+
+club = Item(
+    char=chr(292),
+    color=(0, 191, 255),
+    name="Club",
+    equippable=equippable.Club(power_bonus=0),
+)
+
+cross_bow = Item(
+    char=chr(442),
+    color=(0, 191, 255),
+    name="Cross Bow",
+    equippable=equippable.Crossbow(power_bonus=0),
+)
+
+dagger = Item(
+    char=chr(486),
+    color=(0, 191, 255),
+    name="Dagger",
+    equippable=equippable.Dagger(power_bonus=0),
+)
+
+halberd = Item(
+    char=chr(591),
+    color=(0, 191, 255),
+    name="Halberd",
+    equippable=equippable.Club(power_bonus=0),
+)
+
+hatchet = Item(
+    char=chr(593),
+    color=(0, 191, 255),
+    name="Hatchet",
+    equippable=equippable.Hatchet(power_bonus=0),
+)
+
+hunting_bow = Item(
+    char=chr(491),
+    color=(0, 191, 255),
+    name="Hunting Bow",
+    equippable=equippable.HuntingBow(power_bonus=0),
+)
+
+javelin = Item(
+    char=chr(437),
+    color=(0, 191, 255),
+    name="Javelin",
+    equippable=equippable.Javelin(power_bonus=0),
+)
+
+long_spear = Item(
+    char=chr(437),
+    color=(0, 191, 255),
+    name="Long Spear",
+    equippable=equippable.LongSpear(power_bonus=0),
+)
+
+long_sword = Item(
+    char=")",
+    color=(0, 191, 255),
+    name="Long Sword",
+    equippable=equippable.LongSword(power_bonus=0),
+)
+
+lumber_axe = Item(
+    char=chr(537),
+    color=(0, 191, 255),
+    name="Lumber Axe",
+    equippable=equippable.LumberAxe(power_bonus=0),
+)
+
+mace = Item(
+    char=chr(291),
+    color=(0, 191, 255),
+    name="Mace",
+    equippable=equippable.Mace(power_bonus=0),
+)
+
+poleaxe = Item(
+    char=chr(447),
+    color=(0, 191, 255),
+    name="Poleaxe",
+    equippable=equippable.PoleAxe(power_bonus=0),
+)
+
+quarterstaff = Item(
+    char=chr(439),
+    color=(0, 191, 255),
+    name="Quarterstaff",
+    equippable=equippable.Quarterstaff(power_bonus=0),
+)
+
+shield = Item(
+    char=chr(298),
+    color=(0, 191, 255),
+    name="Shield",
+    equippable=equippable.Shield(power_bonus=0),
+)
+
+short_spear = Item(
+    char=chr(339),
+    color=(0, 191, 255),
+    name="Short Spear",
+    equippable=equippable.ShortSpear(power_bonus=0),
+)
+
+war_axe = Item(
+    char=chr(541),
+    color=(0, 191, 255),
+    name="War Axe",
+    equippable=equippable.WarAxe(power_bonus=0),
+)
+
+war_bow = Item(
+    char=chr(494),
+    color=(0, 191, 255),
+    name="War Bow",
+    equippable=equippable.WarBow(power_bonus=0),
+)
+
+warhammer = Item(
+    char=chr(540),
+    color=(0, 191, 255),
+    name="Warhammer",
+    equippable=equippable.WarHammer(power_bonus=0),
 )
 
 # Armor entities

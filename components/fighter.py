@@ -37,20 +37,35 @@ class Fighter(BaseComponent):
             self.die()
 
     @property
-    def power(self) -> int:
-        """Calculates the final damage result for an attack."""
-        str_mod = self.parent.abilities.str_mod
+    def attack_modifier(self) -> int:
+        """Returns the appropriate ability modifier based on the equipped weapon."""
+        abilities = self.parent.abilities
         weapon = getattr(self.parent.equipment, "weapon", None)
 
-        if weapon and weapon.equippable:
-            roll = sum(
-                random.randint(1, weapon.equippable.damage_dice_sides)
-                for _ in range(weapon.equippable.damage_dice_num)
-            )
-            return roll + str_mod + weapon.equippable.power_bonus
+        # Default to STR if unarmed
+        if not weapon or not weapon.equippable:
+            return abilities.str_mod
 
-        # Use the renamed variable here for natural attacks
-        return random.randint(1, max(1, self.base_damage_die)) + str_mod
+        stat = weapon.equippable.scaling_stat
+
+        if stat == "DEX":
+            return abilities.dex_mod
+        elif stat == "WIS_DEX":  # Special Crossbow Logic
+            return max(abilities.wis_mod, abilities.dex_mod)
+
+        # Default/Sword scaling
+        return abilities.str_mod
+
+    # Update the damage logic to use this new helper
+    @property
+    def power(self) -> int:
+        weapon = getattr(self.parent.equipment, "weapon", None)
+        if weapon and weapon.equippable:
+            roll = sum(random.randint(1, weapon.equippable.damage_dice_sides)
+                       for _ in range(weapon.equippable.damage_dice_num))
+            return roll + self.attack_modifier + weapon.equippable.power_bonus
+
+        return random.randint(1, max(1, self.base_damage_die)) + self.attack_modifier
 
     @property
     def armor_class(self) -> int:
