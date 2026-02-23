@@ -1,69 +1,78 @@
 #!/usr/bin/env python3
+import pygame
 import traceback
-
-import tcod
-
 import color
 import exceptions
 import setup_game
 import input_handlers
 
+# Constants for the new pixel-based window
+TILE_SIZE = 32
+SCREEN_WIDTH_TILES = 80
+SCREEN_HEIGHT_TILES = 40
+PIXEL_WIDTH = SCREEN_WIDTH_TILES * TILE_SIZE  # 2560 pixels
+PIXEL_HEIGHT = SCREEN_HEIGHT_TILES * TILE_SIZE  # 1280 pixels
+
 
 def save_game(handler: input_handlers.BaseEventHandler, filename: str) -> None:
-    """If the current event handler has an active Engine then save it."""
     if isinstance(handler, input_handlers.EventHandler):
         handler.engine.save_as(filename)
         print("Game saved.")
 
 
 def main() -> None:
-    screen_width = 80
-    screen_height = 40
+    pygame.init()
 
-    columns = 32
-    rows = 38
-    total_tiles = columns * rows
-    extended_charmap = list(tcod.tileset.CHARMAP_TCOD) + list(range(160, total_tiles))
+    # Create the window with Pygame
+    screen = pygame.display.set_mode((PIXEL_WIDTH, PIXEL_HEIGHT))
+    pygame.display.set_caption("Tombs of the Ancient Kings")
 
-    tileset = tcod.tileset.load_tilesheet(
-        "resources/tilesets/kenny_1bit_pack_rearranged_32x32.png", columns, rows, extended_charmap
-    )
+    clock = pygame.time.Clock()
 
+    # Initialize the handler (this still uses setup_game for now)
     handler: input_handlers.BaseEventHandler = setup_game.MainMenu()
 
-    with tcod.context.new(
-            columns=screen_width,
-            rows=screen_height,
-            tileset=tileset,
-            title="Yet Another Roguelike Tutorial",
-            vsync=True,
-    ) as context:
-        root_console = tcod.console.Console(screen_width, screen_height, order="F")
-        try:
-            while True:
-                root_console.clear()
-                handler.on_render(console=root_console)
-                context.present(root_console)
+    try:
+        while True:
+            # 1. Clear the screen (Replacing root_console.clear)
+            screen.fill((0, 0, 0))
 
+            # 2. Render current state
+            # Note: We will need to update on_render in other files to accept 'screen'
+            handler.on_render(screen)
+
+            # 3. Update display (Replacing context.present)
+            pygame.display.flip()
+
+            # 4. Handle Events (Replacing tcod.event.wait)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    raise SystemExit()
+
+                # Logic for handling keys and mouse will shift into the handler
                 try:
-                    for event in tcod.event.wait():
-                        context.convert_event(event)
-                        handler = handler.handle_events(event)
-                except Exception:  # Handle exceptions in game.
-                    traceback.print_exc()  # Print error to stderr.
-                    # Then print the error to the message log.
+                    handler = handler.handle_events(event)
+                except Exception:
+                    traceback.print_exc()
                     if isinstance(handler, input_handlers.EventHandler):
                         handler.engine.message_log.add_message(
                             traceback.format_exc(), color.error
                         )
-        except exceptions.QuitWithoutSaving:
-            raise
-        except SystemExit:  # Save and quit.
-            save_game(handler, "savegame.sav")
-            raise
-        except BaseException:  # Save on any other unexpected exception.
-            save_game(handler, "savegame.sav")
-            raise
+
+            # Limit to 60 FPS
+            clock.tick(60)
+
+    except exceptions.QuitWithoutSaving:
+        pygame.quit()
+        raise
+    except SystemExit:
+        save_game(handler, "savegame.sav")
+        pygame.quit()
+        raise
+    except BaseException:
+        save_game(handler, "savegame.sav")
+        pygame.quit()
+        raise
 
 
 if __name__ == "__main__":

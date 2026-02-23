@@ -4,11 +4,11 @@ import lzma
 import pickle
 from typing import TYPE_CHECKING
 
-from tcod.console import Console
+import numpy as np
+import pygame
 from tcod.map import compute_fov
 
 import exceptions
-from message_log import MessageLog
 import render_functions
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ class Engine:
     game_world: GameWorld
 
     def __init__(self, player: Actor):
-        self.message_log = MessageLog()
+        self.message_log = render_functions.MessageLog()
         self.mouse_location = (0, 0)
         self.player = player
 
@@ -31,42 +31,43 @@ class Engine:
                 try:
                     entity.ai.perform()
                 except exceptions.Impossible:
-                    pass  # Ignore impossible action exceptions from AI.
+                    pass
 
     def update_fov(self) -> None:
-        """Recompute the visible area based on the players point of view."""
+        """Recompute the visible area based on the player's point of view."""
+        # Extract transparency boolean array from TileType objects
+        transparency = np.vectorize(lambda t: t.transparent)(self.game_map.tiles)
+
         self.game_map.visible[:] = compute_fov(
-            self.game_map.tiles["transparent"],
+            transparency,
             (self.player.x, self.player.y),
             radius=8,
         )
-        # If a tile is "visible" it should be added to "explored".
         self.game_map.explored |= self.game_map.visible
 
-    def render(self, console: Console) -> None:
-        self.game_map.render(console)
+    def render(self, surface: pygame.Surface) -> None:
+        """Render the game map, UI, and bars to the Pygame surface."""
+        self.game_map.render(surface)
+
+        # UI Positioning (Pixel coordinates)
+        self.message_log.render(surface=surface, x=20, y=550, width=600, height=150)
 
         render_functions.render_bar(
-            console=console,
-            current_value=self.player.fighter.hp,
-            maximum_value=self.player.fighter.max_hp,
-            total_width=20,
-            location=(0, 35)  # Explicitly set the location here
+            surface=surface,
+            current_val=self.player.fighter.hp,
+            max_val=self.player.fighter.max_hp,
+            total_width=200,
+            location=(20, 520)
         )
 
-        # Message log starts at y=35 (5 rows from the bottom)
-        self.message_log.render(console=console, x=21, y=35, width=40, height=4)
-
-        # Dungeon level on row 39 (the very last visible row)
         render_functions.render_dungeon_level(
-            console=console,
+            surface=surface,
             dungeon_level=self.game_world.current_floor,
-            location=(0, 39),
+            location=(20, 500),
         )
 
-        # Mouse-over names stay at the top (y=1)
         render_functions.render_names_at_mouse_location(
-            console=console, x=1, y=1, engine=self
+            surface=surface, x=20, y=480, engine=self
         )
 
     def save_as(self, filename: str) -> None:
@@ -75,16 +76,12 @@ class Engine:
         with open(filename, "wb") as f:
             f.write(save_data)
 
-
-    # In engine.py
     @property
     def camera_x(self) -> int:
-        # Centered on player, clamped to map edges
-        # Assuming viewport width is 80
-        return max(0, min(self.player.x - 40, self.game_map.width - 80))
+        val = self.player.x - 40
+        return max(0, min(val, self.game_map.width - 80))
 
     @property
     def camera_y(self) -> int:
-        # Centered on player, clamped to map edges
-        # Assuming viewport height is 35 (for your 1440p/40-row setup)
-        return max(0, min(self.player.y - 17, self.game_map.height - 35))
+        val = self.player.y - 17
+        return max(0, min(val, self.game_map.height - 35))

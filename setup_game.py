@@ -1,6 +1,5 @@
 """Handle the loading and initialization of game sessions."""
 from __future__ import annotations
-from tcod import libtcodpy
 
 import copy
 import lzma
@@ -8,6 +7,7 @@ import pickle
 import traceback
 from typing import Optional
 
+import pygame
 import tcod
 
 import color
@@ -16,8 +16,9 @@ import entity_factories
 from game_map import GameWorld
 import input_handlers
 
-# Load the background image and remove the alpha channel.
-background_image = tcod.image.load("menu_background.png")[:, :, :3]
+# Load the background image using pygame instead of tcod
+# Note: menu_background.png must be in the same directory or adjust path
+background_image = pygame.image.load("menu_background.png")
 
 
 def engine_base_setup() -> Engine:
@@ -67,6 +68,10 @@ def new_game() -> Engine:
 
     # Generate the world immediately for Quick Start
     engine.game_world.generate_floor()
+
+    if engine.player not in engine.game_map.entities:
+        engine.game_map.entities.add(engine.player)
+
     engine.update_fov()
 
     engine.message_log.add_message(
@@ -87,17 +92,20 @@ def load_game(filename: str) -> Engine:
 class MainMenu(input_handlers.BaseEventHandler):
     """Handle the main menu rendering and input."""
 
-    def on_render(self, console: tcod.console.Console) -> None:
+    def on_render(self, surface: pygame.Surface) -> None:
         """Render the main menu on a background image."""
-        console.draw_semigraphics(background_image, 0, 0)
+        # Draw the background image to fill the screen
+        surface.blit(pygame.transform.scale(background_image, surface.get_size()), (0, 0))
 
-        console.print(
-            console.width // 2,
-            console.height // 2 - 4,
-            "TOMBS OF THE ANCIENT KINGS",
-            fg=color.menu_title,
-            alignment=tcod.CENTER,
-        )
+        # Import UI_FONT for consistent text rendering
+        from render_functions import UI_FONT
+
+        # Render Title
+        title_text = "TOMBS OF THE ANCIENT KINGS"
+        title_surf = UI_FONT.render(title_text, True, color.menu_title)
+        title_x = surface.get_width() // 2 - title_surf.get_width() // 2
+        title_y = surface.get_height() // 2 - 150
+        surface.blit(title_surf, (title_x, title_y))
 
         menu_options = [
             "[N] Quick Start (Default Player)",
@@ -106,23 +114,26 @@ class MainMenu(input_handlers.BaseEventHandler):
             "[Q] Quit"
         ]
 
-        menu_width = 34
+        # Render each menu option with a dark background for readability
         for i, text in enumerate(menu_options):
-            console.print(
-                console.width // 2,
-                console.height // 2 - 2 + i,
-                text.ljust(menu_width),
-                fg=color.menu_text,
-                bg=color.black,
-                alignment=tcod.CENTER,
-                bg_blend=tcod.BKGND_ALPHA(64),
-            )
+            option_surf = UI_FONT.render(text, True, color.menu_text)
+            option_x = surface.get_width() // 2 - option_surf.get_width() // 2
+            option_y = surface.get_height() // 2 - 50 + (i * 40)
 
-    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[input_handlers.BaseEventHandler]:
-        if event.sym in (tcod.event.KeySym.Q, tcod.event.KeySym.ESCAPE):
+            # Draw a semi-transparent black box behind the text
+            bg_rect = pygame.Rect(option_x - 10, option_y - 5, option_surf.get_width() + 20, option_surf.get_height() + 10)
+            overlay = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 150))
+            surface.blit(overlay, (bg_rect.x, bg_rect.y))
+
+            surface.blit(option_surf, (option_x, option_y))
+
+    def ev_keydown(self, event: pygame.event.Event) -> Optional[input_handlers.BaseEventHandler]:
+        # Handle menu navigation using Pygame key constants
+        if event.key in (pygame.K_q, pygame.K_ESCAPE):
             raise SystemExit()
 
-        elif event.sym == tcod.event.KeySym.C:
+        elif event.key == pygame.K_c:
             try:
                 return input_handlers.MainGameEventHandler(load_game("savegame.sav"))
             except FileNotFoundError:
@@ -131,11 +142,11 @@ class MainMenu(input_handlers.BaseEventHandler):
                 traceback.print_exc()
                 return input_handlers.PopupMessage(self, f"Failed to load save:\n{exc}")
 
-        elif event.sym == tcod.event.KeySym.N:
+        elif event.key == pygame.K_n:
             # Jump directly into the game with default stats
             return input_handlers.MainGameEventHandler(new_game())
 
-        elif event.sym == tcod.event.KeySym.M:
+        elif event.key == pygame.K_m:
             # Transition to the modular character creation screen
             return input_handlers.CharacterCreationHandler(engine_base_setup())
 

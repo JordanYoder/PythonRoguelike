@@ -1,77 +1,95 @@
+from __future__ import annotations
+
+import copy
 from components.ai import HostileEnemy
 from components import consumable, equippable
 from components.equipment import Equipment
 from components.fighter import Fighter
 from components.inventory import Inventory
 from components.level import Level
+# Ensure you have an abilities component file; adjust this import as needed
 from components.abilities import Abilities
-from components.equippable import Equippable
-from equipment_types import EquipmentType
-from render_order import RenderOrder
 from entity import Actor, Item
 
-# Character entities
+# --- Player Template ---
+
 player = Actor(
-    char=chr(188),
-    color=(255, 255, 255),
+    char="@",
+    color=(50, 200, 255),
     name="Player",
-    ai_cls=HostileEnemy,
+    ai_cls=HostileEnemy, # Usually handled by input_handlers, but kept for factory structure
     equipment=Equipment(),
-    fighter=Fighter(hit_dice=10, armor_value=0, base_damage_die=1),
+    fighter=Fighter(hp=30, base_defense=2, base_power=5),
     inventory=Inventory(capacity=26),
     level=Level(level_up_base=200),
-    abilities=Abilities(strength=18, dexterity=18, charisma=18, intelligence=18, wisdom=18, constitution=18),
-    render_order=RenderOrder.PLAYER,
+    abilities=Abilities(), # Matches the new __init__ argument in entity.py
+    image_path="resources/tiles/actors/character/humans/char_armor_01.png",
 )
 
+# --- Monsters ---
+
 orc = Actor(
-    char=chr(286),
-    color=(0, 255, 0),
+    char="o",
+    color=(63, 127, 63),
     name="Orc",
     ai_cls=HostileEnemy,
     equipment=Equipment(),
-    fighter=Fighter(hit_dice=2, armor_value=0, base_damage_die=2),
+    fighter=Fighter(hp=10, base_defense=0, base_power=3),
     inventory=Inventory(capacity=0),
-    level=Level(xp_given=35),
-    abilities=Abilities(strength=12, dexterity=10, charisma=10, intelligence=10, wisdom=10, constitution=10 )
+    level=Level(level_up_base=0),
+    abilities=Abilities(),
+    image_path="resources/tiles/actors/character/humans/char_armor_01.png",
 )
+
 troll = Actor(
-    char=chr(484),
-    color=(182, 215, 73),
+    char="T",
+    color=(0, 127, 0),
     name="Troll",
     ai_cls=HostileEnemy,
     equipment=Equipment(),
-    fighter=Fighter(hp=16, armor_value=2, base_damage_die=4),
+    fighter=Fighter(hp=16, base_defense=1, base_power=4),
     inventory=Inventory(capacity=0),
-    level=Level(xp_given=100),
-    abilities=Abilities(strength=10, dexterity=10, charisma=10, intelligence=10, wisdom=10, constitution=10)
+    level=Level(level_up_base=0),
+    abilities=Abilities(),
+    image_path="resources/tiles/actors/character/humans/char_armor_01.png",
 )
 
-# Scroll entities
-confusion_scroll = Item(
-    char=chr(928),
-    color=(207, 63, 255),
-    name="Confusion Scroll",
-    consumable=consumable.ConfusionConsumable(number_of_turns=10),
-)
-fireball_scroll = Item(
-    char=chr(928),
-    color=(255, 0, 0),
-    name="Fireball Scroll",
-    consumable=consumable.FireballDamageConsumable(damage=12, radius=3),
-)
+# --- Items ---
+
 health_potion = Item(
-    char=chr(740),
-    color=(255, 255, 255),
+    char="!",
+    color=(127, 0, 255),
     name="Health Potion",
     consumable=consumable.HealingConsumable(amount=4),
+    image_path="resources/tiles/actors/character/humans/char_armor_01.pngg",
 )
+
 lightning_scroll = Item(
-    char=chr(928),
+    char="?",
     color=(255, 255, 0),
     name="Lightning Scroll",
     consumable=consumable.LightningDamageConsumable(damage=20, maximum_range=5),
+    image_path="resources/tiles/actors/character/humans/char_armor_01.png",
 )
+
+confusion_scroll = Item(
+    char="?",
+    color=(207, 63, 255),
+    name="Confusion Scroll",
+    consumable=consumable.ConfusionConsumable(number_of_turns=10),
+    image_path="resources/tiles/actors/character/humans/char_armor_01.png",
+)
+
+fireball_scroll = Item(
+    char="?",
+    color=(255, 0, 0),
+    name="Fireball Scroll",
+    consumable=consumable.FireballDamageConsumable(damage=12, radius=3),
+    image_path="resources/tiles/actors/character/humans/char_armor_01.png",
+)
+
+# --- Equipment ---
+
 
 # Weapon entities
 sword = Item(

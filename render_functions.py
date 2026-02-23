@@ -1,104 +1,107 @@
 from __future__ import annotations
 
-from typing import Tuple, TYPE_CHECKING
-
+from typing import Tuple, TYPE_CHECKING, List
+import pygame
 import color
-import entity_factories
 
 if TYPE_CHECKING:
-    from tcod.console import Console
     from engine import Engine
     from game_map import GameMap
 
+# 1. Initialize Standard Pygame Font
+pygame.font.init()
 
-def get_names_at_location(x: int, y: int, game_map: GameMap) -> str:
-    x, y = int(x), int(y)
+# Using SysFont to grab Arial from the OS
+FONT_SIZE = 20
+UI_FONT = pygame.font.SysFont("arial", FONT_SIZE)
+# You can also make a bold version for titles
+TITLE_FONT = pygame.font.SysFont("arial", 32, bold=True)
 
-    # Use 'explored' so players can see labels of things in the dark
-    if not game_map.in_bounds(x, y) or not game_map.explored[x, y]:
-        return ""
+TILE_SIZE = 32
 
-    entities_at_location = [
-        entity for entity in game_map.entities if entity.x == x and entity.y == y
-    ]
 
-    lines = []
-    for entity in entities_at_location:
-        # Start with the name
-        name_str = entity.name.capitalize()
+class Message:
+    def __init__(self, text: str, fg: Tuple[int, int, int]):
+        self.plain_text = text
+        self.fg = fg
+        self.count = 1
 
-        # Check if the entity has abilities (is an Actor)
-        if hasattr(entity, "abilities") and entity.abilities:
-            a = entity.abilities
-            f = entity.fighter
+    @property
+    def full_text(self) -> str:
+        if self.count > 1:
+            return f"{self.plain_text} (x{self.count})"
+        return self.plain_text
 
-            # Calculate the display damage range
-            low = max(1, f.min_damage)
-            high = max(1, f.max_damage)
 
-            # Build the stat string using the Abilities attributes
-            # Use uppercase labels to keep it readable
-            stats = (
-                f"(STR:{a.str} DEX:{a.dex} CON:{a.con} INT:{a.int} WIS:{a.wis} CHA:{a.cha} | "
-                f"AC:{f.armor_class} Dmg:{low}-{high})"
-            )
-            name_str = f"{name_str} {stats}"
+class MessageLog:
+    def __init__(self) -> None:
+        self.messages: List[Message] = []
 
-        lines.append(name_str)
+    def add_message(
+            self, text: str, fg: Tuple[int, int, int] = color.white, *, stack: bool = True
+    ) -> None:
+        if stack and self.messages and self.messages[-1].plain_text == text:
+            self.messages[-1].count += 1
+        else:
+            self.messages.append(Message(text, fg))
 
-    # Join multiple entities at the same tile with a comma
-    # Do NOT call .capitalize() on the final string or it will lowercase your stat labels!
-    return ", ".join(lines)
+    def render(
+            self, surface: pygame.Surface, x: int, y: int, width: int, height: int
+    ) -> None:
+        """Render the log. Coordinates are pixels."""
+        # Optional: Draw a dark background for the message log area
+        # pygame.draw.rect(surface, (0, 0, 0), (x, y, width * 16, height * 20))
+
+        render_y = y + height  # Start at the top of the log area
+
+        for message in reversed(self.messages):
+            # Standard pygame.font.render(text, antialias, color)
+            msg_surf = UI_FONT.render(message.full_text, True, message.fg)
+            surface.blit(msg_surf, (x, render_y))
+            render_y -= 22  # Vertical spacing
+
+            if render_y < y:
+                break
 
 
 def render_bar(
-    console: Console,
-    current_value: int,
-    maximum_value: int,
-    total_width: int,
-    location: Tuple[int, int] = (0, 35) # Add a default location that fits the new screen
+        surface: pygame.Surface, current_val: int, max_val: int, total_width: int, location: Tuple[int, int]
 ) -> None:
-    x, y = location # Use the location parameter
-    bar_width = int(float(current_value) / maximum_value * total_width)
+    x, y = location
+    bar_width = int((float(current_val) / max_val) * total_width)
 
-    # Use the 'y' variable instead of the hardcoded 45
-    console.draw_rect(x=x, y=y, width=total_width, height=1, ch=1, bg=color.bar_empty)
-
+    # Draw background bar
+    pygame.draw.rect(surface, color.bar_empty, (x, y, total_width, 20))
+    # Draw current health bar
     if bar_width > 0:
-        console.draw_rect(
-            x=x, y=y, width=bar_width, height=1, ch=1, bg=color.bar_filled
-        )
+        pygame.draw.rect(surface, color.bar_filled, (x, y, bar_width, 20))
 
-    console.print(
-        x=x + 1, y=y, string=f"HP: {current_value}/{maximum_value}", fg=color.bar_text
-    )
+    # Render health text
+    health_text = f"HP: {current_val}/{max_val}"
+    text_surf = UI_FONT.render(health_text, True, color.bar_text)
+    surface.blit(text_surf, (x + 5, y + 1))
 
 
 def render_dungeon_level(
-    console: Console, dungeon_level: int, location: Tuple[int, int]
+        surface: pygame.Surface, dungeon_level: int, location: Tuple[int, int]
 ) -> None:
-    """
-    Render the level the player is currently on, at the given location.
-    """
-    x, y = location
+    level_text = f"Dungeon level: {dungeon_level}"
+    text_surf = UI_FONT.render(level_text, True, color.white)
+    surface.blit(text_surf, location)
 
-    console.print(x=x, y=y, string=f"Dungeon level: {dungeon_level}")
-
-
-# In render_functions.py
 
 def render_names_at_mouse_location(
-    console: Console, x: int, y: int, engine: Engine
+        surface: pygame.Surface, x: int, y: int, engine: Engine
 ) -> None:
     mouse_x, mouse_y = engine.mouse_location
 
-    # TRANSLATION: Add camera offsets to convert screen coords to world coords
-    world_mouse_x = mouse_x + engine.camera_x
-    world_mouse_y = mouse_y + engine.camera_y
+    # Get names from game map logic
+    entities_at_location = [
+        e.name for e in engine.game_map.entities
+        if e.x == mouse_x and e.y == mouse_y and engine.game_map.visible[e.x, e.y]
+    ]
+    names = ", ".join(entities_at_location)
 
-    names_at_mouse_location = get_names_at_location(
-        x=world_mouse_x, y=world_mouse_y, game_map=engine.game_map
-    )
-
-    # Print the result at the specified SCREEN location (x=1, y=1)
-    console.print(x=x, y=y, string=names_at_mouse_location)
+    if names:
+        text_surf = UI_FONT.render(names, True, color.white)
+        surface.blit(text_surf, (x, y))

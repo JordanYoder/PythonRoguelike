@@ -1,9 +1,7 @@
 from typing import Iterable, List, Reversible, Tuple
-import textwrap
-
-import tcod
-
+import pygame
 import color
+from render_functions import UI_FONT
 
 
 class Message:
@@ -14,7 +12,6 @@ class Message:
 
     @property
     def full_text(self) -> str:
-        """The full text of this message, including the count if necessary."""
         if self.count > 1:
             return f"{self.plain_text} (x{self.count})"
         return self.plain_text
@@ -24,59 +21,40 @@ class MessageLog:
     def __init__(self) -> None:
         self.messages: List[Message] = []
 
-    def add_message(
-        self, text: str, fg: Tuple[int, int, int] = color.white, *, stack: bool = True,
-    ) -> None:
-        """Add a message to this log.
-
-        `text` is the message text, `fg` is the text color.
-
-        If `stack` is True then the message can stack with a previous message
-        of the same text.
-        """
+    def add_message(self, text: str, fg: Tuple[int, int, int] = color.white, *, stack: bool = True) -> None:
         if stack and self.messages and text == self.messages[-1].plain_text:
             self.messages[-1].count += 1
         else:
             self.messages.append(Message(text, fg))
 
-    def render(
-            self, console: tcod.console.Console, x: int, y: int, width: int, height: int,
-    ) -> None:
-        """Render this log over the given area.
-
-        `x`, `y`, `width`, `height` is the rectangular region to render onto
-        the `console`.
-        """
-        self.render_messages(console, x, y, width, height, self.messages)
-
-    @staticmethod
-    def wrap(string: str, width: int) -> Iterable[str]:
-        """Return a wrapped text message."""
-        for line in string.splitlines():  # Handle newlines in messages.
-            yield from textwrap.wrap(
-                line, width, expand_tabs=True,
-            )
+    def render(self, surface: pygame.Surface, x: int, y: int, width: int, height: int) -> None:
+        """Render the log using pixel-based text wrapping."""
+        self.render_messages(surface, x, y, width, height, self.messages)
 
     @classmethod
     def render_messages(
-            cls,
-            console: tcod.console.Console,
-            x: int,
-            y: int,
-            width: int,
-            height: int,
-            messages: Reversible[Message],
+            cls, surface: pygame.Surface, x: int, y: int, width: int, height: int, messages: Reversible[Message]
     ) -> None:
-        """Render the messages provided.
-
-        The `messages` are rendered starting at the last message and working
-        backwards.
-        """
-        y_offset = height - 1
+        y_offset = height - 20  # Start from the bottom of the log area
 
         for message in reversed(messages):
-            for line in reversed(list(cls.wrap(message.full_text, width))):
-                console.print(x=x, y=y + y_offset, string=line, fg=message.fg)
-                y_offset -= 1
+            # Simple Pygame text wrapping logic
+            words = message.full_text.split(' ')
+            lines = []
+            current_line = ""
+
+            for word in words:
+                test_line = current_line + word + " "
+                if UI_FONT.size(test_line)[0] < width:
+                    current_line = test_line
+                else:
+                    lines.append(current_line)
+                    current_line = word + " "
+            lines.append(current_line)
+
+            for line in reversed(lines):
                 if y_offset < 0:
-                    return  # No more space to print messages.
+                    return
+                msg_surf = UI_FONT.render(line, True, message.fg)
+                surface.blit(msg_surf, (x, y + y_offset))
+                y_offset -= 20  # Move up for the next line

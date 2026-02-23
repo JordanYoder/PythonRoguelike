@@ -4,7 +4,6 @@ from typing import Optional, Tuple, TYPE_CHECKING
 
 import color
 import exceptions
-import random
 
 if TYPE_CHECKING:
     from engine import Engine
@@ -25,7 +24,6 @@ class Action:
         """Perform this action with the objects needed to determine its scope.
 
         `self.engine` is the scope this action is being performed in.
-
         `self.entity` is the object performing the action.
 
         This method must be overridden by Action subclasses.
@@ -61,18 +59,18 @@ class PickupAction(Action):
 
 class ItemAction(Action):
     def __init__(
-        self, entity: Actor, item: Item, target_xy: Optional[Tuple[int, int]] = None
+            self, entity: Actor, item: Item, target_position: Optional[Tuple[int, int]] = None
     ):
         super().__init__(entity)
         self.item = item
-        if not target_xy:
-            target_xy = entity.x, entity.y
-        self.target_xy = target_xy
+        if not target_position:
+            target_position = entity.x, entity.y
+        self.target_position = target_position
 
     @property
     def target_actor(self) -> Optional[Actor]:
-        """Return the actor at this action's destination."""
-        return self.engine.game_map.get_actor_at_location(*self.target_xy)
+        """Return the actor at this actions destination."""
+        return self.engine.game_map.get_actor_at_location(*self.target_position)
 
     def perform(self) -> None:
         """Invoke the items ability, this action will be given to provide context."""
@@ -131,19 +129,17 @@ class ActionWithDirection(Action):
 
     @property
     def blocking_entity(self) -> Optional[Entity]:
-        """Return the blocking entity at this action's destination."""
+        """Return the blocking entity at this actions destination."""
         return self.engine.game_map.get_blocking_entity_at_location(*self.dest_xy)
 
     @property
     def target_actor(self) -> Optional[Actor]:
-        """Return the actor at this action's destination."""
+        """Return the actor at this actions destination."""
         return self.engine.game_map.get_actor_at_location(*self.dest_xy)
 
     def perform(self) -> None:
         raise NotImplementedError()
 
-
-# In actions.py
 
 class MeleeAction(ActionWithDirection):
     def perform(self) -> None:
@@ -151,42 +147,23 @@ class MeleeAction(ActionWithDirection):
         if not target:
             raise exceptions.Impossible("Nothing to attack.")
 
-        # Use the dynamic modifier for the hit roll
-        attack_roll = random.randint(1, 20)
-        total_attack = attack_roll + self.entity.fighter.attack_modifier
+        damage = self.entity.fighter.power - target.fighter.defense
 
-        target_ac = target.fighter.armor_class
-
-        if attack_roll == 20:
-            # Natural 20 is a Critical Hit in FTD!
-            self.engine.message_log.add_message(f"CRITICAL HIT!", color.health_recovered)
-            self.resolve_attack(target, is_crit=True)
-        elif attack_roll == 1:
-            # Natural 1 is a fumble
-            self.engine.message_log.add_message(f"{self.entity.name} fumbles!", color.error)
-        elif total_attack >= target_ac:
-            # Success!
-            self.resolve_attack(target)
+        attack_desc = f"{self.entity.name.capitalize()} attacks {target.name}"
+        if self.entity is self.engine.player:
+            attack_color = color.player_atk
         else:
-            # Miss
-            self.engine.message_log.add_message(f"{self.entity.name} misses {target.name}.")
+            attack_color = color.enemy_atk
 
-    def resolve_attack(self, target: Actor, is_crit: bool = False) -> None:
-        # 1. Capture the name BEFORE the target potentially dies
-        target_name = target.name
-
-        # 2. Roll for damage (calls the random property once)
-        damage = self.entity.fighter.power
-        if is_crit:
-            damage *= 2
-
-        # 3. Apply the damage
-        target.fighter.hp -= damage
-
-        # 4. Use the captured target_name for the log
-        self.engine.message_log.add_message(
-            f"{self.entity.name.capitalize()} hits {target_name} for {damage} damage!"
-        )
+        if damage > 0:
+            self.engine.message_log.add_message(
+                f"{attack_desc} for {damage} hit points.", attack_color
+            )
+            target.fighter.hp -= damage
+        else:
+            self.engine.message_log.add_message(
+                f"{attack_desc} but does no damage.", attack_color
+            )
 
 
 class MovementAction(ActionWithDirection):
@@ -196,9 +173,11 @@ class MovementAction(ActionWithDirection):
         if not self.engine.game_map.in_bounds(dest_x, dest_y):
             # Destination is out of bounds.
             raise exceptions.Impossible("That way is blocked.")
-        if not self.engine.game_map.tiles["walkable"][dest_x, dest_y]:
-            # Destination is blocked by a tile.
+
+        # FIXED: Accessing the .walkable property of the TileType object
+        if not self.engine.game_map.tiles[dest_x, dest_y].walkable:
             raise exceptions.Impossible("That way is blocked.")
+
         if self.engine.game_map.get_blocking_entity_at_location(dest_x, dest_y):
             # Destination is blocked by an entity.
             raise exceptions.Impossible("That way is blocked.")
@@ -210,6 +189,5 @@ class BumpAction(ActionWithDirection):
     def perform(self) -> None:
         if self.target_actor:
             return MeleeAction(self.entity, self.dx, self.dy).perform()
-
         else:
             return MovementAction(self.entity, self.dx, self.dy).perform()

@@ -1,56 +1,68 @@
-from typing import Tuple
+# tile_types.py
+from typing import Tuple, Optional
+import pygame
 
-import numpy as np  # type: ignore
 
-# Tile graphics structured type compatible with Console.tiles_rgb.
-graphic_dt = np.dtype(
-    [
-        ("ch", np.int32),  # Unicode codepoint.
-        ("fg", "3B"),  # 3 unsigned bytes, for RGB colors.
-        ("bg", "3B"),
-    ]
-)
+# Simplified tile structure to hold image paths
+class TileType:
+    def __init__(
+        self,
+        walkable: bool,
+        transparent: bool,
+        dark_color: Tuple[int, int, int],
+        light_color: Tuple[int, int, int],
+        image_path: Optional[str] = None,
+    ):
+        self.walkable = walkable
+        self.transparent = transparent
+        self.dark_color = dark_color
+        self.light_color = light_color
+        self.image_path = image_path
+        self._image: Optional[pygame.Surface] = None
 
-# Tile struct used for statically defined tile data.
-tile_dt = np.dtype(
-    [
-        ("walkable", bool),  # True if this tile can be walked over.
-        ("transparent", bool),  # True if this tile doesn't block FOV.
-        ("dark", graphic_dt),  # Graphics for when this tile is not in FOV.
-        ("light", graphic_dt),  # Graphics for when the tile is in FOV.
-    ]
-)
+    @property
+    def image(self) -> Optional[pygame.Surface]:
+        """Lazy load the tile image."""
+        if self._image is None and self.image_path:
+            try:
+                self._image = pygame.image.load(self.image_path).convert_alpha()
+            except pygame.error:
+                return None
+        return self._image
 
 
 def new_tile(
-    *,  # Enforce the use of keywords, so that parameter order doesn't matter.
-    walkable: int,
-    transparent: int,
-    dark: Tuple[int, Tuple[int, int, int], Tuple[int, int, int]],
-    light: Tuple[int, Tuple[int, int, int], Tuple[int, int, int]],
-) -> np.ndarray:
-    """Helper function for defining individual tile types """
-    return np.array((walkable, transparent, dark, light), dtype=tile_dt)
+    *,
+    walkable: bool,
+    transparent: bool,
+    dark: Tuple[int, int, int],
+    light: Tuple[int, int, int],
+    image_path: Optional[str] = None,
+) -> TileType:
+    return TileType(walkable, transparent, dark, light, image_path)
 
 
-# SHROUD represents unexplored, unseen tiles
-SHROUD = np.array((ord(" "), (255, 255, 255), (0, 0, 0)), dtype=graphic_dt)
-
+# Define your tiles with paths to your PNG files
 floor = new_tile(
     walkable=True,
     transparent=True,
-    dark=(162, (38, 50, 56), (0, 0, 0)),
-    light=(162, (255, 255, 255), (38, 50, 56)),
+    dark=(25, 25, 25),
+    light=(60, 60, 60),
+    image_path="resources/tiles/floor/tile_01.png",
 )
+
 wall = new_tile(
     walkable=False,
     transparent=False,
-    dark=(1001, (38, 50, 56), (0, 0, 0)),
-    light=(1001, (255, 255, 255), (38, 50, 56)),
+    dark=(50, 40, 20),
+    light=(130, 110, 50),
+    image_path="resources/tiles/wall/wall_01.png",
 )
+
 down_stairs = new_tile(
     walkable=True,
     transparent=True,
-    dark=(ord(">"), (0, 0, 100), (50, 50, 150)),
-    light=(ord(">"), (255, 255, 255), (200, 180, 50)),
+    dark=(0, 0, 100),    # Deep blue for explored stairs
+    light=(0, 0, 255),   # Bright blue for visible stairs
+    image_path="",
 )
