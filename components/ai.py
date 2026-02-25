@@ -16,34 +16,34 @@ class BaseAI(Action):
     def perform(self) -> None:
         raise NotImplementedError()
 
-    def get_path_to(self, dest_x: int, dest_y: int) -> List[Tuple[int, int]]:
+        # components/ai.py
+
+    def get_path_to(self, target_x: int, target_y: int) -> List[List[int]]:
         """Compute and return a path to the target position.
 
         If there is no valid path then returns an empty list.
         """
-        # Copy the walkable array.
-        cost = np.array(self.entity.gamemap.tiles["walkable"], dtype=np.int8)
+        # 1. Create a cost map from our TileType array
+        # Walkable tiles = 1, Walls = 0
+        cost = np.vectorize(lambda t: int(t.walkable))(self.entity.gamemap.tiles)
 
         for entity in self.entity.gamemap.entities:
-            # Check that an entity blocks movement and the cost isn't zero (blocking.)
+            # Check that an entity blocks movement and the cost isn't already zero (wall)
             if entity.blocks_movement and cost[entity.x, entity.y]:
-                # Add to the cost of a blocked position.
-                # A lower number means more enemies will crowd behind each other in
-                # hallways.  A higher number means enemies will take longer paths in
-                # order to surround the player.
-                cost[entity.x, entity.y] += 10
+                # Add a higher cost to tiles with other entities to discourage crowding,
+                # or set to 0 if you want them to be impassable.
+                cost[entity.x, entity.y] = 10
 
-        # Create a graph from the cost array and pass that graph to a new pathfinder.
+        # Create a graph from the cost array and pass that graph to a pathfinder
         graph = tcod.path.SimpleGraph(cost=cost, cardinal=2, diagonal=3)
         pathfinder = tcod.path.Pathfinder(graph)
 
-        pathfinder.add_root((self.entity.x, self.entity.y))  # Start position.
+        pathfinder.add_root((self.entity.x, self.entity.y))  # Start position
 
-        # Compute the path to the destination and remove the starting point.
-        path: List[List[int]] = pathfinder.path_to((dest_x, dest_y))[1:].tolist()
+        # Compute the path to the target and remove the starting point
+        path: List[List[int]] = pathfinder.path_to((target_x, target_y))[1:].tolist()
 
-        # Convert from List[List[int]] to List[Tuple[int, int]].
-        return [(index[0], index[1]) for index in path]
+        return path
 
 
 class HostileEnemy(BaseAI):

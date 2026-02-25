@@ -1,78 +1,80 @@
-#!/usr/bin/env python3
-import pygame
 import traceback
+
+import pygame
+
 import color
 import exceptions
-import setup_game
 import input_handlers
-
-# Constants for the new pixel-based window
-TILE_SIZE = 32
-SCREEN_WIDTH_TILES = 80
-SCREEN_HEIGHT_TILES = 40
-PIXEL_WIDTH = SCREEN_WIDTH_TILES * TILE_SIZE  # 2560 pixels
-PIXEL_HEIGHT = SCREEN_HEIGHT_TILES * TILE_SIZE  # 1280 pixels
+import setup_game
 
 
 def save_game(handler: input_handlers.BaseEventHandler, filename: str) -> None:
+    """If the current event handler has an active engine, save the game."""
     if isinstance(handler, input_handlers.EventHandler):
         handler.engine.save_as(filename)
         print("Game saved.")
 
 
 def main() -> None:
+    # Screen resolution - adjust these to match your monitor's preferred size
+    screen_width = 2560
+    screen_height = 1440
+
     pygame.init()
 
-    # Create the window with Pygame
-    screen = pygame.display.set_mode((PIXEL_WIDTH, PIXEL_HEIGHT))
+    # 200ms delay before repeating, then repeat every 50ms
+    pygame.key.set_repeat(200, 50)
+
+    # Set the window icon and title
     pygame.display.set_caption("Tombs of the Ancient Kings")
+    screen = pygame.display.set_mode((screen_width, screen_height), pygame.RESIZABLE)
+
+    handler: input_handlers.BaseEventHandler = setup_game.MainMenu()
 
     clock = pygame.time.Clock()
 
-    # Initialize the handler (this still uses setup_game for now)
-    handler: input_handlers.BaseEventHandler = setup_game.MainMenu()
-
-    try:
-        while True:
-            # 1. Clear the screen (Replacing root_console.clear)
+    while True:
+        # 1. Render the current state
+        try:
+            # Clear the screen with black
             screen.fill((0, 0, 0))
 
-            # 2. Render current state
-            # Note: We will need to update on_render in other files to accept 'screen'
+            # The handler (Menu or Game) draws itself to the screen
             handler.on_render(screen)
 
-            # 3. Update display (Replacing context.present)
             pygame.display.flip()
+        except Exception:
+            traceback.print_exc()
 
-            # 4. Handle Events (Replacing tcod.event.wait)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    raise SystemExit()
+        # 2. Handle Events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                # Save and Exit
+                if isinstance(handler, input_handlers.EventHandler):
+                    save_game(handler, "savegame.sav")
+                pygame.quit()
+                raise SystemExit()
 
-                # Logic for handling keys and mouse will shift into the handler
-                try:
-                    handler = handler.handle_events(event)
-                except Exception:
-                    traceback.print_exc()
-                    if isinstance(handler, input_handlers.EventHandler):
-                        handler.engine.message_log.add_message(
-                            traceback.format_exc(), color.error
-                        )
+            # Handle mouse motion for hovering over enemies/items
+            elif event.type == pygame.MOUSEMOTION:
+                if isinstance(handler, input_handlers.EventHandler):
+                    # Capture raw pixel coordinates
+                    handler.engine.mouse_location = event.pos
 
-            # Limit to 60 FPS
-            clock.tick(60)
+            # Hand off all other events (keyboard, etc.) to the current handler
+            try:
+                handler = handler.handle_events(event)
+            except exceptions.Impossible as exc:
+                # If an action is impossible, report it to the message log
+                if isinstance(handler, input_handlers.EventHandler):
+                    handler.engine.message_log.add_message(exc.args[0], color.impossible)
+            except Exception:
+                traceback.print_exc()
+                if isinstance(handler, input_handlers.EventHandler):
+                    handler.engine.message_log.add_message(traceback.format_exc(), color.error)
 
-    except exceptions.QuitWithoutSaving:
-        pygame.quit()
-        raise
-    except SystemExit:
-        save_game(handler, "savegame.sav")
-        pygame.quit()
-        raise
-    except BaseException:
-        save_game(handler, "savegame.sav")
-        pygame.quit()
-        raise
+        # Caps the game at 60 FPS
+        clock.tick(60)
 
 
 if __name__ == "__main__":

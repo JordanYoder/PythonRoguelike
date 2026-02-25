@@ -8,14 +8,10 @@ if TYPE_CHECKING:
     from engine import Engine
     from game_map import GameMap
 
-# 1. Initialize Standard Pygame Font
+# 1. Initialize Font
 pygame.font.init()
-
-# Using SysFont to grab Arial from the OS
 FONT_SIZE = 20
 UI_FONT = pygame.font.SysFont("arial", FONT_SIZE)
-# You can also make a bold version for titles
-TITLE_FONT = pygame.font.SysFont("arial", 32, bold=True)
 
 TILE_SIZE = 32
 
@@ -48,20 +44,33 @@ class MessageLog:
     def render(
             self, surface: pygame.Surface, x: int, y: int, width: int, height: int
     ) -> None:
-        """Render the log. Coordinates are pixels."""
-        # Optional: Draw a dark background for the message log area
-        # pygame.draw.rect(surface, (0, 0, 0), (x, y, width * 16, height * 20))
+        """Render the log with a background panel."""
+        panel_rect = pygame.Rect(x, y, width, height)
+        pygame.draw.rect(surface, (15, 15, 15), panel_rect)
+        pygame.draw.rect(surface, (100, 100, 100), panel_rect, 1)
 
-        render_y = y + height  # Start at the top of the log area
+        current_draw_y = y + height - 25
 
         for message in reversed(self.messages):
-            # Standard pygame.font.render(text, antialias, color)
             msg_surf = UI_FONT.render(message.full_text, True, message.fg)
-            surface.blit(msg_surf, (x, render_y))
-            render_y -= 22  # Vertical spacing
+            surface.blit(msg_surf, (x + 10, current_draw_y))
+            current_draw_y -= 22
 
-            if render_y < y:
+            if current_draw_y < y + 5:
                 break
+
+def get_names_at_location(x: int, y: int, game_map: GameMap) -> str:
+    """Returns a string of names at map coordinates (x, y)."""
+    # Important: only show names if the tile is in bounds AND currently visible
+    if not game_map.in_bounds(x, y) or not game_map.visible[x, y]:
+        return ""
+
+    names = ", ".join(
+        entity.name for entity in game_map.entities
+        if entity.x == x and entity.y == y
+    )
+
+    return names.capitalize()
 
 
 def render_bar(
@@ -70,13 +79,10 @@ def render_bar(
     x, y = location
     bar_width = int((float(current_val) / max_val) * total_width)
 
-    # Draw background bar
     pygame.draw.rect(surface, color.bar_empty, (x, y, total_width, 20))
-    # Draw current health bar
     if bar_width > 0:
         pygame.draw.rect(surface, color.bar_filled, (x, y, bar_width, 20))
 
-    # Render health text
     health_text = f"HP: {current_val}/{max_val}"
     text_surf = UI_FONT.render(health_text, True, color.bar_text)
     surface.blit(text_surf, (x + 5, y + 1))
@@ -91,17 +97,15 @@ def render_dungeon_level(
 
 
 def render_names_at_mouse_location(
-        surface: pygame.Surface, x: int, y: int, engine: Engine
+        surface: pygame.Surface, x: int, y: int, engine: Engine, map_pos: Tuple[int, int]
 ) -> None:
-    mouse_x, mouse_y = engine.mouse_location
+    map_x, map_y = map_pos
 
-    # Get names from game map logic
-    entities_at_location = [
-        e.name for e in engine.game_map.entities
-        if e.x == mouse_x and e.y == mouse_y and engine.game_map.visible[e.x, e.y]
-    ]
-    names = ", ".join(entities_at_location)
+    names = get_names_at_location(map_x, map_y, engine.game_map)
 
     if names:
         text_surf = UI_FONT.render(names, True, color.white)
+        # Background box for readability
+        bg_rect = text_surf.get_rect(topleft=(x, y))
+        pygame.draw.rect(surface, (0, 0, 0), bg_rect.inflate(10, 10))
         surface.blit(text_surf, (x, y))

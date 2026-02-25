@@ -45,29 +45,57 @@ class Engine:
         )
         self.game_map.explored |= self.game_map.visible
 
+        # engine.py
+        # engine.py
+
+        # engine.py
+
+        # engine.py
+
     def render(self, surface: pygame.Surface) -> None:
-        """Render the game map, UI, and bars to the Pygame surface."""
+        """Render the game map, UI, and coordinate-aware tooltips."""
+        s_width, s_height = surface.get_size()
+
+        # 1. Draw the game map (this uses self.camera_x/y internally)
         self.game_map.render(surface)
 
-        # UI Positioning (Pixel coordinates)
-        self.message_log.render(surface=surface, x=20, y=550, width=600, height=150)
+        # 2. TRANSLATE MOUSE PIXELS TO MAP COORDINATES
+        raw_x, raw_y = self.mouse_location
 
-        render_functions.render_bar(
-            surface=surface,
-            current_val=self.player.fighter.hp,
-            max_val=self.player.fighter.max_hp,
-            total_width=200,
-            location=(20, 520)
-        )
+        # Calculate which tile index the mouse is over ON THE SCREEN
+        screen_tile_x = raw_x // render_functions.TILE_SIZE
+        screen_tile_y = raw_y // render_functions.TILE_SIZE
 
-        render_functions.render_dungeon_level(
-            surface=surface,
-            dungeon_level=self.game_world.current_floor,
-            location=(20, 500),
-        )
+        # Add the CAMERA OFFSET to find the actual tile in the WORLD
+        map_x = screen_tile_x + self.camera_x
+        map_y = screen_tile_y + self.camera_y
 
+        # --- UI ELEMENTS ---
+        side_margin = 20
+        bottom_margin = 40
+        log_height = 150
+        log_y = s_height - log_height - bottom_margin
+
+        # 3. Message Log
+        self.message_log.render(surface, side_margin, log_y, 600, log_height)
+
+        # 4. Health Bar
+        bar_y = log_y - 40
+        render_functions.render_bar(surface, self.player.fighter.hp, self.player.fighter.max_hp, 200,
+                                    (side_margin, bar_y))
+
+        # 5. Dungeon Level
+        level_y = bar_y - 30
+        render_functions.render_dungeon_level(surface, self.game_world.current_floor, (side_margin, level_y))
+
+        # 6. RENDER NAMES AT MOUSE LOCATION
+        # We pass the translated map_x and map_y here
         render_functions.render_names_at_mouse_location(
-            surface=surface, x=20, y=480, engine=self
+            surface=surface,
+            x=side_margin,
+            y=10,
+            engine=self,
+            map_pos=(map_x, map_y)
         )
 
     def save_as(self, filename: str) -> None:

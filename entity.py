@@ -48,26 +48,39 @@ class Entity:
         self.image_path = image_path
         self._image: Optional[pygame.Surface] = None
 
+        # entity.py
+
     @property
     def image(self) -> Optional[pygame.Surface]:
-        """Lazy loads the image and applies the entity's color tint."""
         if self._image is None and self.image_path:
             try:
-                # 1. Load the original image
-                original_surface = pygame.image.load(self.image_path).convert_alpha()
+                # 1. Load sprite
+                sprite = pygame.image.load(self.image_path).convert_alpha()
 
-                # 2. Create a colored surface to use as a filter
-                color_surface = pygame.Surface(original_surface.get_size()).convert_alpha()
-                color_surface.fill(self.color)
+                # 2. Create solid black base
+                full_size = sprite.get_size()
+                self._image = pygame.Surface(full_size).convert()
+                self._image.fill((0, 0, 0))
 
-                # 3. Blend the color into the sprite (Multiplication)
-                # This turns white pixels into the chosen color
-                original_surface.blit(color_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                # 3. Tint and Blit
+                color_surf = pygame.Surface(full_size).convert_alpha()
+                color_surf.fill(self.color)
+                sprite.blit(color_surf, (0, 0), special_flags=pygame.BLEND_RGB_MULT)
+                self._image.blit(sprite, (0, 0))
 
-                self._image = original_surface
-            except pygame.error as e:
-                print(f"Could not load image {self.image_path}: {e}")
+            except (FileNotFoundError, pygame.error):
+                return None
         return self._image
+
+    # CRITICAL FOR SAVING/LOADING
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["_image"] = None  # Clear the surface so it can be saved
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._image = None  # Ensure it reloads on next render
 
     @property
     def gamemap(self) -> GameMap:

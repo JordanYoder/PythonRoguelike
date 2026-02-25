@@ -48,7 +48,7 @@ floor = new_tile(
     transparent=True,
     dark=(25, 25, 25),
     light=(60, 60, 60),
-    image_path="resources/tiles/floor/tile_01.png",
+    image_path="resources/tiles/floor/tile/tile_01.png",
 )
 
 wall = new_tile(
